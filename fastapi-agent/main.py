@@ -3,6 +3,7 @@ import logging
 from typing import Optional, Any, List
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -36,6 +37,15 @@ MCP_SERVER_URL = os.getenv("MCP_SERVER_URL")
 
 app = FastAPI(title="Agent with Ollama / LiteLLM + MCP Tools")
 
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, replace with specific origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 class AgentRequest(BaseModel):
     instructions: Optional[str] = None
@@ -49,7 +59,37 @@ class AgentResponse(BaseModel):
 
 @app.get("/")
 async def health():
-    return {"status": "ok"}
+    return {"status": "ok", "service": "fastapi-agent"}
+
+
+@app.get("/health")
+async def detailed_health():
+    """Detailed health check endpoint"""
+    try:
+        # Check if we can build LLM
+        llm = build_llm()
+        llm_status = "ok"
+        llm_type = type(llm).__name__
+    except Exception as e:
+        llm_status = f"error: {str(e)}"
+        llm_type = "unknown"
+
+    # Check MCP connection
+    try:
+        if MCP_SERVER_URL:
+            # Don't actually fetch tools in health check to avoid timeouts
+            mcp_status = "configured"
+        else:
+            mcp_status = "not_configured"
+    except Exception as e:
+        mcp_status = f"error: {str(e)}"
+
+    return {
+        "status": "ok",
+        "service": "fastapi-agent",
+        "llm": {"status": llm_status, "type": llm_type, "choice": LLM_CHOICE},
+        "mcp": {"status": mcp_status, "url": MCP_SERVER_URL},
+    }
 
 
 def build_llm():

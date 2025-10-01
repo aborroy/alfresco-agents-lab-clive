@@ -62,8 +62,3 @@ logs/
 .env.development
 .env.test
 .env.production
-
-# Service-specific ignores
-fastapi-agent/.env
-fastapi-agent/__pycache__/
-fastapi-agent/.venv/

@@ -2,6 +2,21 @@
 
 A FastAPI service that runs AI agents with Ollama/LiteLLM and MCP tools.
 
+## Project Structure
+
+This is organized as a monorepo-friendly structure:
+```
+├── docker-compose.yaml          # Root docker-compose for all services
+├── .env                         # Root environment for docker-compose
+├── fastapi-agent/              # FastAPI service
+│   ├── main.py                 # FastAPI application
+│   ├── pyproject.toml          # Python dependencies
+│   ├── dockerfile              # Container build
+│   ├── .env                    # Local development config
+│   └── .env.example            # Configuration template
+└── README.md                   # This file
+```
+
 ## Quick Start
 
 ### Without Docker (using uv)
@@ -9,6 +24,9 @@ A FastAPI service that runs AI agents with Ollama/LiteLLM and MCP tools.
 ```bash
 # Install uv if you haven't already
 curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Navigate to the service directory
+cd fastapi-agent
 
 # Install dependencies and run
 uv sync
@@ -18,12 +36,15 @@ uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ### With Docker
 
 ```bash
+# From the root directory
 docker-compose up --build
 ```
 
+**Note**: Environment variables for Docker are read from the root `.env` file.
+
 ## Configuration
 
-All configuration is loaded from `.env` file. You can choose between two LLM providers:
+All configuration is loaded from `fastapi-agent/.env` file. You can choose between two LLM providers:
 
 ### Option 1: Self-hosted with Ollama
 
