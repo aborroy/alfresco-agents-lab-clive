@@ -1,0 +1,14 @@
+version: "3.8"
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - LLM_CHOICE=${LLM_CHOICE:-ollama}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-gpt-oss:20b}
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_TIMEOUT=${OLLAMA_TIMEOUT:-350.0}
+      - LITELLM_MODEL=${LITELLM_MODEL:-gpt-3.5-turbo}
+      - MCP_SERVER_URL=http://host.docker.internal:8003/mcp
+    restart: unless-stopped
