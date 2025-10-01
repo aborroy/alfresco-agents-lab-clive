@@ -29,6 +29,8 @@ OLLAMA_TIMEOUT = float(
     os.getenv("OLLAMA_TIMEOUT", "120.0")
 )  # Keep this default for safety
 LITELLM_MODEL = os.getenv("LITELLM_MODEL")
+LITELLM_API_KEY = os.getenv("LITELLM_API_KEY")
+LITELLM_API_BASE = os.getenv("LITELLM_API_BASE")
 
 MCP_SERVER_URL = os.getenv("MCP_SERVER_URL")
 
@@ -60,7 +62,10 @@ def build_llm():
             model=OLLAMA_MODEL, base_url=OLLAMA_BASE_URL, request_timeout=OLLAMA_TIMEOUT
         )
     elif LLM_CHOICE.lower() == "litellm":
-        llm = LiteLLM(model=LITELLM_MODEL)
+        # LiteLLM with Hyland ML platform support
+        llm = LiteLLM(
+            model=LITELLM_MODEL, api_key=LITELLM_API_KEY, api_base=LITELLM_API_BASE
+        )
     else:
         raise ValueError(f"Unsupported LLM_CHOICE: {LLM_CHOICE}")
     return llm

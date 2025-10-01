@@ -23,7 +23,9 @@ docker-compose up --build
 
 ## Configuration
 
-All configuration is loaded from `.env` file. Create it with your local settings:
+All configuration is loaded from `.env` file. You can choose between two LLM providers:
+
+### Option 1: Self-hosted with Ollama
 
 ```env
 # LLM Configuration
@@ -31,7 +33,19 @@ LLM_CHOICE=ollama
 OLLAMA_MODEL=gpt-oss:20b
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_TIMEOUT=300
-LITELLM_MODEL=gpt-3.5-turbo
+
+# MCP Tools
+MCP_SERVER_URL=http://localhost:8003/mcp
+```
+
+### Option 2: Claude via Hyland ML Platform
+
+```env
+# LLM Configuration
+LLM_CHOICE=litellm
+LITELLM_MODEL=litellm_proxy/anthropic.claude-sonnet-4-20250514-v1:0
+LITELLM_API_KEY=sk-7onSBXvm_SctdjwSZCBBeg
+LITELLM_API_BASE=https://api.ai.dev.experience.hyland.com/litellm
 
 # MCP Tools
 MCP_SERVER_URL=http://localhost:8003/mcp
