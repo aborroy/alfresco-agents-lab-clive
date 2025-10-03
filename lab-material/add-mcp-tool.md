@@ -2,7 +2,7 @@
 
 This guide walks you from zero to a working MCP tool that fetches the **Markdown rendition** of an Alfresco node via REST, and tests it with **MCP Inspector**.
 
-What we’re building (in plain words):
+What we’re building (in plain words)
 
 * An MCP server (Python app) that exposes tools an LLM can call
 * A new tool named `get_markdown_content(node_id)` that calls the Alfresco REST API:
@@ -10,6 +10,8 @@ What we’re building (in plain words):
   GET /alfresco/api/-default-/public/alfresco/versions/1/nodes/{nodeId}/renditions/markdown/content
   ```
 * It returns the Markdown text of the document (convenient for LLMs)
+
+> We will be extending the Community [Alfresco MCP Server](https://github.com/stevereiner/python-alfresco-mcp-server.git) provided by Steve Reiner
 
 ## Requirements
 
@@ -22,7 +24,7 @@ What we’re building (in plain words):
 
 * Node.js 18+ (for MCP Inspector)
 
-> Check you have them:
+> Check you have them
 >
 > ```bash
 > python --version
@@ -30,12 +32,12 @@ What we’re building (in plain words):
 > npm --version
 > ```
 
-If you don’t have Python:
+If you don’t have Python
 
 * macOS: `brew install python`
 * Windows: install from [https://www.python.org/downloads/](https://www.python.org/downloads/) (then use `py` instead of `python`)
 
-If you don’t have Node:
+If you don’t have Node
 
 * macOS: `brew install node`
 * Windows/macOS/Linux: [https://nodejs.org/en/download](https://nodejs.org/en/download)
@@ -192,10 +194,6 @@ Click `Run Tool`
 Expected output (shape):
 
 ```
-**Node:** `ab47a9a3-ec77-43b2-87a9-a3ec7783b2e9`
-**Content-Type:** `text/markdown`
-
-```markdown
 # Title
 This is a simple test document...
 ```
