@@ -5,7 +5,7 @@ services:
       - "8000:8000"
     environment:
       - LLM_CHOICE=${LLM_CHOICE:-ollama}
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-gpt-oss:20b}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-gpt-oss}
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - OLLAMA_TIMEOUT=${OLLAMA_TIMEOUT:-350.0}
       - LITELLM_MODEL=${LITELLM_MODEL}
