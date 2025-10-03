@@ -1,4 +1,3 @@
-version: "3.8"
 services:
   fastapi-agent:
     build: ./fastapi-agent
@@ -12,7 +11,7 @@ services:
       - LITELLM_MODEL=${LITELLM_MODEL}
       - LITELLM_API_KEY=${LITELLM_API_KEY}
       - LITELLM_API_BASE=${LITELLM_API_BASE}
-      - MCP_SERVER_URL=http://host.docker.internal:8003/mcp
+      - MCP_SERVER_URL=http://alfresco-mcp-server:8003/mcp
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/"]
       interval: 30s
@@ -20,3 +19,7 @@ services:
       retries: 3
       start_period: 40s
     restart: unless-stopped
+
+include:
+  - alfresco-deployment/compose.yaml
+  - alfresco-mcp-server/compose.yaml    
