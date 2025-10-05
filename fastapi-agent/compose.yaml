@@ -1,0 +1,21 @@
+services:
+  fastapi-agent:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - LLM_CHOICE=${LLM_CHOICE:-ollama}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-gpt-oss}
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_TIMEOUT=${OLLAMA_TIMEOUT:-350.0}
+      - LITELLM_MODEL=${LITELLM_MODEL}
+      - LITELLM_API_KEY=${LITELLM_API_KEY}
+      - LITELLM_API_BASE=${LITELLM_API_BASE}
+      - MCP_SERVER_URL=http://alfresco-mcp-server:8003/mcp
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped

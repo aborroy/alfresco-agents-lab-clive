@@ -6,12 +6,11 @@ A FastAPI service that runs AI agents with Ollama/LiteLLM and MCP tools.
 
 This is organized as a monorepo-friendly structure:
 ```
-├── docker-compose.yaml          # Root docker-compose for all services
-├── .env                         # Root environment for docker-compose
 └── fastapi-agent/               # FastAPI service
     ├── main.py                  # FastAPI application
     ├── pyproject.toml           # Python dependencies
     ├── dockerfile               # Container build
+    ├── compose.yaml             # Docker Compose deployment
     ├── .env                     # Local development config
     ├── .env.example             # Configuration template
     └──README.md                 # This file
