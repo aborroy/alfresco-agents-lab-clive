@@ -9,11 +9,13 @@ End-to-end lab to run Alfresco Community (with Markdown renditions) + an MCP ser
 ```
 /
 ├─ alfresco-deployment/          # Complete Alfresco CE deployment (repo, solr, share, ACA, transforms, proxy)
+│  ├─ compose.yaml
 ├─ alfresco-mcp-server/          # Containerized MCP server wired to Alfresco
 │  ├─ compose.yaml
 │  ├─ Dockerfile
 │  └─ get_markdown_content.py    # Tool implementation (see “Added MCP tool”)
 ├─ fastapi-agent/                # FastAPI service (Agent) with LlamaIndex + MCP tools
+│  ├─ compose.yaml
 │  ├─ main.py
 │  └─ dockerfile
 ├─ lab-material/
