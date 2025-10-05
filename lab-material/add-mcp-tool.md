@@ -185,6 +185,40 @@ mcp-inspector --config ./mcp.json
 
 Find a `uuid` for a Node in Alfresco Repository, like `ab47a9a3-ec77-43b2-87a9-a3ec7783b2e9`
 
+```bash
+curl -s -u admin:admin \
+  -X POST "http://localhost:8080/alfresco/api/-default-/public/search/versions/1/search" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": {
+      "query": "TYPE:\"cm:content\""
+    },
+    "paging": {
+      "maxItems": 5,
+      "skipCount": 0
+    },
+    "sort": [
+      { "type": "FIELD", "field": "cm:modified", "ascending": false }
+    ],
+    "include": ["properties"]
+  }'
+
+{
+  "list": {
+    "pagination": {
+    },
+    "entries": [
+      {
+        "entry": {
+          "isFile": true,
+          "name": "test.odt",
+          "id": "ab47a9a3-ec77-43b2-87a9-a3ec7783b2e9",
+          "properties": {
+          }
+        }
+      },  
+```
+
 In Inspector, set:
 
 * `node_id`: your UUID (e.g., `ab47a9a3-ec77-43b2-87a9-a3ec7783b2e9`)
