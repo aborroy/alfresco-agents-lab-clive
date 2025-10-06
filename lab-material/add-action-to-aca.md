@@ -1,49 +1,64 @@
-# Add a Summary Action to ACA
+# Add a “Summarize” Action to Alfresco Content App
 
-This guide walks you from zero to a working [ACA](https://github.com/Alfresco/alfresco-content-app) action that calculates a summary of the document and stores the result in property `cm:description`
+This guide walks you step-by-step through creating a new **action in [Alfresco Content App (ACA)](https://github.com/Alfresco/alfresco-content-app)** that summarizes a document using the **FastAPI Agent** and stores the result in the document’s `cm:description` property.
 
-What we’re building (in plain words)
+## What We’re Building
 
-* An Alfresco Content Application that adds the action `Summarize` to documents
-* It stores the summary in property `cm:description` of the document
-* Invokes FastAPI Agent REST API `/agent` with a prompt that asks for the summarization and the storage
+You’ll extend ACA with a new action called **"Summarize"**:
+
+* It appears in **Context Menu**, **Toolbar**, and **Viewer Toolbar**
+* When clicked, it:
+
+  * Sends a request to the **FastAPI Agent** (`/agent`) asking to summarize the selected document
+  * Updates the document’s **`cm:description`** property with the generated summary
+  * Displays a small notification (snackbar) before and after execution
+
+In plain terms
+
+> The user clicks **Summarize** > ACA calls the Agent > the Agent retrieves, summarizes and updates the document > ACA notifies the user once it’s done
 
 ## Requirements
 
-### Runtime
+### Runtime Environment
 
-* Alfresco Agents Lab stack running locally with the Agent REST API available in http://localhost:8000/agent, instructions available in root [README.md](../README.md)
+You need the **Alfresco Agents Lab** stack running locally, with the Agent REST API available at:
 
-### Developing
+```
+http://localhost:8000/agent
+```
 
-* Node.js 18+
+Follow the setup instructions in the root [README.md](../README.md).
 
-> Check you have them
->
-> ```bash
-> node --version
-> npm --version
-> ```
+### Development Environment
 
-If you don’t have Node
+* Node.js 18 or later
+* npm (bundled with Node)
+
+Check your versions:
+
+```bash
+node --version
+npm --version
+```
+
+If you need Node:
 
 * macOS: `brew install node`
-* Windows/macOS/Linux: [https://nodejs.org/en/download](https://nodejs.org/en/download)
+* Windows/Linux/macOS: [https://nodejs.org/en/download](https://nodejs.org/en/download)
 
-## Set up development environment
+## Set Up the Development Environment
 
-Get the source code
+Clone the official ACA repository
 
 ```bash
 git clone git@github.com:Alfresco/alfresco-content-app.git
 cd alfresco-content-app
 ```
 
-Create the configuration file
+Create a `.env` file to define your local repository endpoint
 
 ```bash
-vi .env
-BASE_URL="http://localhost:8080"
+echo 'BASE_URL="http://localhost:8080"' > .env
 ```
 
 Install dependencies
@@ -52,15 +67,17 @@ Install dependencies
 npm install
 ```
 
-## Develop the integration with Agent REST API
+## Develop the Agent Integration
 
-Create a new folder for the assets of the summary extension
+You’ll now create a small Angular extension that adds the "Summarize" action
+
+1. Create the Extension Structure
 
 ```bash
 mkdir -p projects/ext-summary/src/effects
 ```
 
-Code the service class as a new ACA Action in file `projects/ext-summary/src/effects/summary.effects.ts`
+2. Create the Action Effect in file `projects/ext-summary/src/effects/summary.effects.ts`:
 
 ```typescript
 import { Injectable, inject } from '@angular/core';
@@ -84,7 +101,11 @@ export class SummaryEffects {
           const nodeId = node?.id;
           const nodeName = node?.name || 'file';
           const prompt = `Fetch Markdown for node ${nodeId}, summarize it in 50 words or less and store the result in cm:description property.`;
+
+          // Notify user that summarization has started
           this.snackBar.open(`Summary requested for ${nodeName}`, 'OK', { duration: 3000 });
+
+          // Call FastAPI Agent
           this.http.post('/agent', { prompt }).subscribe({
             next: () => this.snackBar.open(`Summary completed for ${nodeName}`, 'OK', { duration: 3000 }),
             error: () => this.snackBar.open(`Summary failed for ${nodeName}`, 'Close', { duration: 3000 })
@@ -96,7 +117,11 @@ export class SummaryEffects {
 }
 ```
 
-Create the ACA Action configuration file in `projects/ext-summary/src/assets/ext-summary.plugin.json`
+> Effects in ACA listen to specific action types (`SUMMARY` here) and react to them. In this case, by triggering an HTTP POST to the Agent
+
+3. Define the Extension Manifest
+
+Create `projects/ext-summary/src/assets/ext-summary.plugin.json`:
 
 ```json
 {
@@ -129,7 +154,6 @@ Create the ACA Action configuration file in `projects/ext-summary/src/assets/ext
         ]
       }
     ],
-
     "contextMenu": [
       {
         "id": "summary.context.button",
@@ -140,7 +164,6 @@ Create the ACA Action configuration file in `projects/ext-summary/src/assets/ext
         "rules": { "visible": ["app.context.file"] }
       }
     ],
-
     "viewer": {
       "toolbarActions": [
         {
@@ -161,7 +184,11 @@ Create the ACA Action configuration file in `projects/ext-summary/src/assets/ext
 }
 ```
 
-Declare the ACA Extension in file `projects/ext-summary/src/lib/ext-summary.module.ts`
+> This JSON describes where the action appears (toolbar, context menu, viewer) and how it behaves when clicked
+
+4. Register the Module
+
+Create `projects/ext-summary/src/lib/ext-summary.module.ts`:
 
 ```typescript
 import { NgModule, Provider, EnvironmentProviders } from '@angular/core';
@@ -182,54 +209,51 @@ export function provideSummaryExtension(): (Provider | EnvironmentProviders)[] {
 export class ExtSummaryModule {}
 ```
 
-Export all elements from the module in `projects/ext-summary/src/public-api.ts`
+And export the module in `projects/ext-summary/src/public-api.ts`:
 
 ```typescript
 export * from './lib/ext-summary.module';
 ```
 
-## Attach the ACA Extension to the ACA Application
+## Attach the Extension to ACA
 
-Modify the file `app/src/app/extensions.module.ts` to add the following lines that import the `provideSummaryExtension` function
+Edit `app/src/app/extensions.module.ts` and import the new extension
 
 ```typescript
-...
 import { provideSummaryExtension } from 'projects/ext-summary/src/public-api';
-...
+
 export function provideApplicationExtensions(): (Provider | EnvironmentProviders)[] {
   return [
-    ...
     ...provideSummaryExtension(),
-    ...
+    // keep other extensions here
   ];
+}
 ```
 
-Add the ACA Action configuration file in `app/project.json`
+### Add Extension Assets to Build
 
-```typescript
+Edit `app/project.json` and include your JSON plugin file under the build assets section
+
+```json
 {
-  "name": "content-ce",
   "targets": {
     "build": {
-      "executor": "@angular-devkit/build-angular:browser",
       "options": {
-        },
         "assets": [
-          ...,
-          {
-            "glob": "ext-summary.plugin.json",
-            "input": "projects/ext-summary/src/assets",
-            "output": "./assets/plugins"
-          }
-        ],
-        ...
+          { "glob": "ext-summary.plugin.json", "input": "projects/ext-summary/src/assets", "output": "./assets/plugins" }
+        ]
+      }
+    }
+  }
+}
 ```
 
-Finally, add the Fast API URL to the Proxy to avoid CORS problems in `app/proxy.conf.js`
+### Configure Proxy to Bypass CORS
 
-```typescript
+Edit `app/proxy.conf.js` and **add** the Agent endpoint
+
+```javascript
 module.exports = {
-  ...
   '/agent': {
     target: 'http://localhost:8000',
     changeOrigin: true,
@@ -239,32 +263,84 @@ module.exports = {
 };
 ```
 
-## Testing
+> This ensures that the browser can call the Agent REST API via the ACA dev server without CORS issues
 
-Start locally the ACA application
+## Testing the Action
+
+Start ACA locally
 
 ```bash
 npm start
 ```
 
-> You should see it listening in port 4200 (no errors)
+Access [http://localhost:4200](http://localhost:4200) and log in (default `admin` / `admin`)
 
-Verify again that Alfresco Agents Lab stack is running locally and available in http://localhost:8000
+1. Select any document.
+2. Click the **Summarize** action (context menu, toolbar, or viewer)
+3. You’ll see:
 
-Open the browser at http://localhost:4200 and login using default credentials (`admin`/`admin`)
-
-Select a document in the UI and click `Summarize` action
+   * A toast: *"Summary requested for document.pdf"*
+   * After processing: *"Summary completed for document.pdf"*
 
 ![Screen capture](add-action-to-aca.png)
 
-A toast message will inform that the action is running in the background: "Summary requested for document.pdf"
+Now open the **Properties** panel: the `Description` field (`cm:description`) should contain the generated summary
 
-After a while a new toast message will inform that the action has finished: "Summary completed for document.pdf"
+## What Just Happened?
 
-At this point you can verify in the UI that `Description` property for the document has been populated with the summar
+With only a few lines of code, you’ve chained together a full cross-system workflow
 
-## What happened?
+1. **ACA (Angular)** sends a simple request to the Agent
 
-A complex integration with Alfresco Repository has been done by using a simple prompt:
+   ```
+   Fetch Markdown for node ${nodeId}, summarize it in 50 words or less and store the result in cm:description property.
+   ```
+2. **FastAPI Agent** interprets that prompt, communicates with the **Alfresco MCP**, fetches the document’s Markdown rendition, and generates the summary
+3. **MCP → Repository** updates the `cm:description` field
+4. **ACA** simply waits and displays notifications, no complex backend code needed
 
-*Fetch Markdown for node ${nodeId}, summarize it in 50 words or less and store the result in cm:description property.*
+> This is the power of prompt-driven integration: a single human-readable instruction can orchestrate multiple system actions
+
+### Visual Overview
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as 🧑‍💻 User (ACA UI)
+    participant A as 🖥️ Alfresco Content App (Angular)
+    participant F as ⚡ FastAPI Agent (localhost:8000)
+    participant M as 🤖 Alfresco MCP
+    participant R as 🗃️ Alfresco Repository
+
+    Note over U,A: 1️⃣ User clicks **"Summarize"** action
+    U->>A: Clicks “Summarize” (context / toolbar / viewer)
+
+    Note over A: 2️⃣ ACA triggers SUMMARY effect
+    A->>F: POST /agent<br/>{"prompt": "Fetch Markdown for node {id}, summarize it..."}
+
+    Note over F: 3️⃣ Agent interprets the prompt
+    F->>M: Request Markdown rendition<br/>(via MCP Tool)
+    M->>R: Fetch node content<br/>(/nodes/{id}/renditions/md)
+    R-->>M: Return Markdown text
+    M-->>F: Markdown retrieved
+
+    Note over F: 4️⃣ LLM Summarization
+    F->>F: Generate summary (Ollama / LLM)
+    F->>M: Update cm:description<br/>with generated summary
+    M->>R: PATCH /nodes/{id}/metadata
+    R-->>M: Metadata updated
+    M-->>F: Operation success
+
+    Note over F,A: 5️⃣ Notify ACA
+    F-->>A: 200 OK
+    A-->>U: Toast: “Summary completed for document.pdf”
+
+    Note over R: ✅ `cm:description` now contains the summary
+```
+
+## Next Steps
+
+* Extend the prompt with metadata awareness (e.g., “use title and author to improve summary quality”)
+* Add visual feedback (spinners or progress banners)
+* Chain multiple actions (e.g., “Translate and summarize”)
+* Contribute your extension to the [Alfresco Agents Lab](https://github.com/aborroy/alfresco-agents-lab-clive) project!
