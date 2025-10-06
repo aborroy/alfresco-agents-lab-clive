@@ -23,7 +23,39 @@ End-to-end lab to run Alfresco Community (with Markdown renditions) + an MCP ser
 └─ compose.yaml                  # Root Compose that includes the two sub-stacks + agent
 ```
 
-## TL;DR – Run the whole thing
+## Architecture
+
+```mermaid
+flowchart LR
+  %% Entry
+  U[User] -->|HTTP 8000| AGENT[AI Agent]
+
+  %% AI Agent stack
+  subgraph AI_Agent_Stack
+    AGENT[AI Agent]
+    MCP[Alfresco MCP]
+    AGENT -->|HTTP 8003| MCP
+    AGENT -->|HTTP 11434, gpt-oss| OLLAMA[Ollama runtime]
+  end
+
+  %% Alfresco core
+  subgraph Alfresco_Repository
+    REPO[Alfresco Repository]
+    TMD[Transform MD convert2md]
+    REPO -->|HTTP 8090| TMD
+  end
+
+  %% LLM runtime
+  subgraph LLM
+    OLLAMA[Ollama runtime]
+  end
+
+  %% Cross stack links
+  MCP -->|HTTP 8080| REPO
+  TMD -->|HTTP 11434,llava| OLLAMA
+```
+
+## Running
 
 1. Prereqs
 
