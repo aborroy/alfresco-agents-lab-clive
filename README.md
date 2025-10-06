@@ -19,7 +19,8 @@ End-to-end lab to run Alfresco Community (with Markdown renditions) + an MCP ser
 │  ├─ main.py
 │  └─ dockerfile
 ├─ lab-material/
-│  └─ add-mcp-tool.md            # Step-by-step guide for adding the Markdown tool
+│  ├─ add-mcp-tool.md            # Step-by-step guide for adding the Markdown tool
+│  └─ add-action-to-aca.md       # Step-by-step guide for adding a Summarizing action to ACA UI
 └─ compose.yaml                  # Root Compose that includes the two sub-stacks + agent
 ```
 
