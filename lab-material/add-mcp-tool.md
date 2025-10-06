@@ -127,7 +127,7 @@ async def get_markdown_content(
 
 ## Testing
 
-Verify Alfresco Repository is running (http://localhost:8080/alfresco)
+Follow Alfresco Docker Compose deployment instructions in [alfresco-deploment](../alfresco-deployment] and verify Alfresco Repository is running in http://localhost:8080/alfresco
 
 Create a `.env` file in the MCP repo root (same folder as `run_server.py`):
 
