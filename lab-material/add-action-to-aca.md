@@ -74,10 +74,10 @@ You’ll now create a small Angular extension that adds the "Summarize" action
 1. Create the Extension Structure
 
 ```bash
-mkdir -p projects/ext-summary/src/effects
+mkdir -p projects/ext-summary/src
 ```
 
-2. Create the Action Effect in file `projects/ext-summary/src/effects/summary.effects.ts`:
+2. Create the Action Effect in file `projects/ext-summary/src/summary.effects.ts`:
 
 ```typescript
 import { Injectable, inject } from '@angular/core';
@@ -98,8 +98,8 @@ export class SummaryEffects {
         ofType('SUMMARY'),
         tap((action: any) => {
           const node = action.payload;
-          const nodeId = node?.id;
-          const nodeName = node?.name || 'file';
+          const nodeId = node.id;
+          const nodeName = node.name;
           const prompt = `Fetch Markdown for node ${nodeId}, summarize it in 50 words or less and store the result in cm:description property.`;
 
           // Notify user that summarization has started
@@ -188,13 +188,13 @@ Create `projects/ext-summary/src/assets/ext-summary.plugin.json`:
 
 4. Register the Module
 
-Create `projects/ext-summary/src/lib/ext-summary.module.ts`:
+Create `projects/ext-summary/src/ext-summary.module.ts`:
 
 ```typescript
 import { NgModule, Provider, EnvironmentProviders } from '@angular/core';
 import { provideExtensionConfig } from '@alfresco/adf-extensions';
 import { provideEffects } from '@ngrx/effects';
-import { SummaryEffects } from '../effects/summary.effects';
+import { SummaryEffects } from './summary.effects';
 
 export function provideSummaryExtension(): (Provider | EnvironmentProviders)[] {
   return [
@@ -212,7 +212,20 @@ export class ExtSummaryModule {}
 And export the module in `projects/ext-summary/src/public-api.ts`:
 
 ```typescript
-export * from './lib/ext-summary.module';
+export * from './ext-summary.module';
+```
+
+Here is the final result:
+
+```bash
+$ tree ext-summary
+ext-summary
+└── src
+    ├── assets
+    │   └── ext-summary.plugin.json
+    ├── ext-summary.module.ts
+    ├── public-api.ts
+    └── summary.effects.ts
 ```
 
 ## Attach the Extension to ACA
