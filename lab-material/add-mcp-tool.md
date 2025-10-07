@@ -117,11 +117,13 @@ from .tools.core.get_markdown_content import get_markdown_content_impl
 
 # ================== CORE TOOLS ==================
 
-@mcp.tool
+@mcp.tool(
+    name="get_markdown_content",
+    description="Fetch the Markdown/Text content of an Alfresco node."
+)
 async def get_markdown_content(
     node_id: str
 ) -> str:
-    """Fetch the Markdown/Text rendition of an Alfresco node."""
     return await get_markdown_content_impl(node_id)
 ```
 
