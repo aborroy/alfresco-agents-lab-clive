@@ -3,7 +3,7 @@
 [![Docker Compose](https://img.shields.io/badge/Docker-Compose-blue?logo=docker\&logoColor=white)](https://www.docker.com/)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-green?logo=python\&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi\&logoColor=white)](https://fastapi.tiangolo.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 [![LlamaIndex](https://img.shields.io/badge/LlamaIndex-Integrated-blueviolet?logo=llama\&logoColor=white)](https://www.llamaindex.ai/)
 [![Alfresco](https://img.shields.io/badge/Alfresco-Community-orange?logo=alfresco\&logoColor=white)](https://github.com/Alfresco)
 
