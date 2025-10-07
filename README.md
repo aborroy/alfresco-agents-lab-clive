@@ -1,5 +1,12 @@
 # Alfresco Agents Lab (CLive)
 
+[![Docker Compose](https://img.shields.io/badge/Docker-Compose-blue?logo=docker\&logoColor=white)](https://www.docker.com/)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-green?logo=python\&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi\&logoColor=white)](https://fastapi.tiangolo.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![LlamaIndex](https://img.shields.io/badge/LlamaIndex-Integrated-blueviolet?logo=llama\&logoColor=white)](https://www.llamaindex.ai/)
+[![Alfresco](https://img.shields.io/badge/Alfresco-Community-orange?logo=alfresco\&logoColor=white)](https://github.com/Alfresco)
+
 End-to-end lab to run Alfresco Community (with Markdown renditions) + an MCP server (with a Markdown tool) + a FastAPI Agent that consumes MCP tools through LlamaIndex. Everything can be started **from the repo root** with a single Compose file.
 
 > The MCP tool added here follows the lab guide: "Add MCP Tool" in `lab-material/add-mcp-tool.md`
@@ -85,20 +92,6 @@ docker compose up --build
 * MCP Server (health/endpoint): [http://localhost:8003/mcp](http://localhost:8003/mcp)
 * Agent API (FastAPI): [http://localhost:8000/](http://localhost:8000/)  (health), `POST /agent` (run)
 
-## Added MCP tool (Markdown rendition)
-
-This lab adds a lightweight tool so the MCP server can fetch the Markdown/Text rendition of an Alfresco node
-
-* Implementation: `alfresco-mcp-server/get_markdown_content.py`
-* Registration: the server is patched per the guide so the tool is exposed at runtime
-* Source steps are documented in `lab-material/add-mcp-tool.md`
-
-Original Alfresco MCP Server source code is available in https://github.com/stevereiner/python-alfresco-mcp-server
-
-> The Alfresco Repository is already configured with
-> `-DlocalTransform.md.url=http://transform-md:8090/`
-> and the `transform-md` service expects Ollama with `llava` on your host
-
 ## Using the Agent
 
 The Agent consumes **MCP tools** from `alfresco-mcp-server` and runs prompts with your chosen LLM
@@ -116,3 +109,39 @@ curl -sS http://localhost:8000/agent \
   -H "Content-Type: application/json" \
   -d '{"prompt":"Fetch Markdown for node 947c51e2-6ffd-4eb8-bc51-e26ffd1eb8b6 and summarize it"}'
 ```
+
+## Lab Guides
+
+The repository includes practical tutorials:
+
+| Guide                                                  | Description                                                                          |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| [Add MCP Tool](lab-material/add-mcp-tool.md)           | Explains how to develop and register a new MCP tool to access Alfresco content       |
+| [Add Action to ACA](lab-material/add-action-to-aca.md) | Describes how to extend Alfresco Content App to trigger the AI summarization process |
+
+Each guide is designed to be followed independently, but together they form a complete learning path from *zero to AI-enhanced Alfresco*
+
+## Development Notes
+
+You can rebuild or tweak individual components using their internal `compose.yaml` files
+
+For example, to develop and test the MCP server alone:
+
+```bash
+cd alfresco-mcp-server
+docker compose up --build
+```
+
+To run the FastAPI agent in local development mode:
+
+```bash
+cd fastapi-agent
+uvicorn main:app --reload --port 8000
+```
+
+## Related Resources
+
+* [Spring AI](https://docs.spring.io/spring-ai/reference/)
+* [Model Context Protocol (MCP)](https://modelcontextprotocol.io)
+* [LlamaIndex Documentation](https://docs.llamaindex.ai)
+* [Ollama](https://ollama.ai)
