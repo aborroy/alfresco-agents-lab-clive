@@ -204,7 +204,11 @@ curl -s -u admin:admin \
     ],
     "include": ["properties"]
   }'
+```
 
+Expected response:
+
+```json
 {
   "list": {
     "pagination": {
@@ -218,7 +222,7 @@ curl -s -u admin:admin \
           "properties": {
           }
         }
-      },  
+      }  
 ```
 
 In Inspector, set:

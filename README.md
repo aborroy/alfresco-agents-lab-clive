@@ -92,6 +92,13 @@ docker compose up --build
 * MCP Server (health/endpoint): [http://localhost:8003/mcp](http://localhost:8003/mcp)
 * Agent API (FastAPI): [http://localhost:8000/](http://localhost:8000/)  (health), `POST /agent` (run)
 
+To login into Alfresco UI use the credentials
+
+````
+user = admin
+password = admin
+````
+
 ## Using the Agent
 
 The Agent consumes **MCP tools** from `alfresco-mcp-server` and runs prompts with your chosen LLM
