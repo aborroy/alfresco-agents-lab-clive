@@ -133,9 +133,7 @@ Create `projects/ext-summary/src/assets/ext-summary.plugin.json`:
   "$license": "LGPL-3.0",
 
   "actions": [
-    { "id": "summary.fromContext", "type": "SUMMARY", "payload": "$(context.menu.entry)" },
-    { "id": "summary.fromToolbar", "type": "SUMMARY", "payload": "$(context.selection.first.entry)" },
-    { "id": "summary.fromViewer",  "type": "SUMMARY", "payload": "$(context.preview.node)" }
+    { "id": "summary", "type": "SUMMARY", "payload": "$(context.selection.first.entry)" }
   ],
 
   "features": {
@@ -148,7 +146,7 @@ Create `projects/ext-summary/src/assets/ext-summary.plugin.json`:
             "order": 90,
             "icon": "description",
             "title": "Summarize",
-            "actions": { "click": "summary.fromToolbar" },
+            "actions": { "click": "summary" },
             "rules": { "visible": ["app.selection.file"] }
           }
         ]
@@ -160,7 +158,7 @@ Create `projects/ext-summary/src/assets/ext-summary.plugin.json`:
         "order": 450,
         "icon": "description",
         "title": "Summarize",
-        "actions": { "click": "summary.fromContext" },
+        "actions": { "click": "summary" },
         "rules": { "visible": ["app.context.file"] }
       }
     ],
@@ -174,7 +172,7 @@ Create `projects/ext-summary/src/assets/ext-summary.plugin.json`:
               "order": 1,
               "icon": "description",
               "title": "Summarize",
-              "actions": { "click": "summary.fromViewer" }
+              "actions": { "click": "summary" }
             }
           ]
         }
