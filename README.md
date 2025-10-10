@@ -79,6 +79,8 @@ flowchart LR
 
   Ollama should listen on `http://localhost:11434` (used via `host.docker.internal` inside containers)
 
+> **Note**: If you are using Linux, check the specific instructions at https://github.com/aborroy/alfresco-agents-lab-clive/issues/1#issuecomment-3391212961
+
 2. Up the full stack from the repo root
 
 ```bash
