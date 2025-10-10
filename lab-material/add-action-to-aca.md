@@ -155,11 +155,11 @@ Create `projects/ext-summary/src/assets/ext-summary.plugin.json`:
     "contextMenu": [
       {
         "id": "summary.context.button",
-        "order": 450,
+        "order": 90,
         "icon": "description",
         "title": "Summarize",
         "actions": { "click": "summary" },
-        "rules": { "visible": ["app.context.file"] }
+        "rules": { "visible": ["app.selection.file"] }
       }
     ],
     "viewer": {
