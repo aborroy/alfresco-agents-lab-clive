@@ -70,9 +70,8 @@ services:
           timeout: 3s
           retries: 3
           start_period: 1m
-        volumes: 
-            - ./data/alf-repo-data:/usr/local/tomcat/alf_data
-            - ./logs/alfresco:/usr/local/tomcat/logs        
+        volumes:
+          - alf-repo-data:/usr/local/tomcat/alf_data
 
     transform-core-aio:
         image: alfresco/alfresco-transform-core-aio:${TRANSFORM_ENGINE_TAG}
@@ -122,8 +121,6 @@ services:
         depends_on:
           alfresco:
             condition: service_healthy
-        volumes: 
-            - ./logs/share:/usr/local/tomcat/logs  
     
     postgres:
         image: postgres:${POSTGRES_TAG}
@@ -144,9 +141,8 @@ services:
           interval: 10s
           timeout: 5s
           retries: 5
-        volumes: 
-            - ./data/postgres-data:/var/lib/postgresql/data
-            - ./logs/postgres:/var/log/postgresql  
+        volumes:
+          - pg-data:/var/lib/postgresql/data
 
     solr6:
         build:
@@ -176,8 +172,8 @@ services:
         depends_on:
           alfresco:
             condition: service_healthy
-        volumes: 
-            - ./data/solr-data:/opt/alfresco-search-services/data   
+        volumes:
+          - solr-data:/opt/alfresco-search-services/data
     
     content-app:
         image: alfresco/alfresco-content-app:${ACA_TAG}
@@ -205,3 +201,8 @@ services:
             - ./config/nginx.htpasswd:/etc/nginx/conf.d/nginx.htpasswd 
         ports:
             - ${BIND_IP_NGINX:-0.0.0.0}:8080:8080
+
+volumes:
+  alf-repo-data:
+  pg-data:
+  solr-data:            
