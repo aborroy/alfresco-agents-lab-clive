@@ -73,6 +73,7 @@ flowchart LR
   ```bash
   # for the Markdown transformer
   ollama pull llava
+  ollama pull mxbai-embed-large
   # for the agent (or change OLLAMA_MODEL in .env)
   ollama pull gpt-oss
   ```
