@@ -1,4 +1,5 @@
 import os
+import asyncio
 import logging
 from typing import Optional, Any, List
 
@@ -22,13 +23,14 @@ logger = logging.getLogger("agent-service")
 
 load_dotenv()
 
-# Config via env - no defaults, everything from .env
+# -----------------------------
+# Config via env
+# -----------------------------
 LLM_CHOICE = os.getenv("LLM_CHOICE")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL")
-OLLAMA_TIMEOUT = float(
-    os.getenv("OLLAMA_TIMEOUT", "120.0")
-)  # Keep this default for safety
+OLLAMA_TIMEOUT = float(os.getenv("OLLAMA_TIMEOUT", "120.0"))  # safe default
+
 LITELLM_MODEL = os.getenv("LITELLM_MODEL")
 LITELLM_API_KEY = os.getenv("LITELLM_API_KEY")
 LITELLM_API_BASE = os.getenv("LITELLM_API_BASE")
@@ -40,16 +42,16 @@ logger.info("=" * 60)
 logger.info("FASTAPI AGENT STARTING UP")
 logger.info("=" * 60)
 logger.info("Configuration:")
-logger.info(f"  LLM_CHOICE: {LLM_CHOICE}")
-logger.info(f"  OLLAMA_MODEL: {OLLAMA_MODEL}")
-logger.info(f"  OLLAMA_BASE_URL: {OLLAMA_BASE_URL}")
-logger.info(f"  OLLAMA_TIMEOUT: {OLLAMA_TIMEOUT}")
-logger.info(f"  LITELLM_MODEL: {LITELLM_MODEL}")
-logger.info(f"  LITELLM_API_BASE: {LITELLM_API_BASE}")
+logger.info(f" LLM_CHOICE: {LLM_CHOICE}")
+logger.info(f" OLLAMA_MODEL: {OLLAMA_MODEL}")
+logger.info(f" OLLAMA_BASE_URL: {OLLAMA_BASE_URL}")
+logger.info(f" OLLAMA_TIMEOUT: {OLLAMA_TIMEOUT}")
+logger.info(f" LITELLM_MODEL: {LITELLM_MODEL}")
+logger.info(f" LITELLM_API_BASE: {LITELLM_API_BASE}")
 logger.info(
-    f"  LITELLM_API_KEY: {'*' * (len(LITELLM_API_KEY) - 4) + LITELLM_API_KEY[-4:] if LITELLM_API_KEY else 'None'}"
+    f" LITELLM_API_KEY: {'*' * (len(LITELLM_API_KEY) - 4) + LITELLM_API_KEY[-4:] if LITELLM_API_KEY else 'None'}"
 )
-logger.info(f"  MCP_SERVER_URL: {MCP_SERVER_URL}")
+logger.info(f" MCP_SERVER_URL: {MCP_SERVER_URL}")
 logger.info("=" * 60)
 
 app = FastAPI(title="Agent with Ollama / LiteLLM + MCP Tools")
@@ -57,13 +59,15 @@ app = FastAPI(title="Agent with Ollama / LiteLLM + MCP Tools")
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=["*"],  # In production, restrict origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
+# -----------------------------
+# Models
+# -----------------------------
 class AgentRequest(BaseModel):
     instructions: Optional[str] = None
     prompt: str
@@ -74,6 +78,142 @@ class AgentResponse(BaseModel):
     debug: Optional[Any] = None
 
 
+# -----------------------------
+# LLM builder
+# -----------------------------
+def build_llm():
+    """Build the selected LLM instance."""
+    if not LLM_CHOICE:
+        raise ValueError("LLM_CHOICE is not set")
+
+    logger.info(f"Building LLM with choice: {LLM_CHOICE}")
+
+    if LLM_CHOICE.lower() == "ollama":
+        logger.info("Configuring Ollama LLM:")
+        logger.info(f" Model: {OLLAMA_MODEL}")
+        logger.info(f" Base URL: {OLLAMA_BASE_URL}")
+        logger.info(f" Timeout: {OLLAMA_TIMEOUT}")
+
+        if not OLLAMA_MODEL or not OLLAMA_BASE_URL:
+            raise ValueError("OLLAMA_MODEL and OLLAMA_BASE_URL must be set for Ollama")
+
+        llm = Ollama(
+            model=OLLAMA_MODEL,
+            base_url=OLLAMA_BASE_URL,
+            request_timeout=OLLAMA_TIMEOUT,
+            additional_kwargs={
+                "temperature": 0.1,  # low temp for consistent tool calls
+                "top_p": 0.9,
+            },
+        )
+        logger.info("Ollama LLM created successfully")
+        return llm
+
+    if LLM_CHOICE.lower() == "litellm":
+        logger.info("Configuring LiteLLM:")
+        logger.info(f" Model: {LITELLM_MODEL}")
+        logger.info(f" API Base: {LITELLM_API_BASE}")
+        logger.info(
+            f" API Key: {'*' * (len(LITELLM_API_KEY) - 4) + LITELLM_API_KEY[-4:] if LITELLM_API_KEY else 'None'}"
+        )
+
+        if not (LITELLM_MODEL and LITELLM_API_BASE and LITELLM_API_KEY):
+            raise ValueError("LITELLM_MODEL, LITELLM_API_BASE and LITELLM_API_KEY must be set for LiteLLM")
+
+        llm = LiteLLM(
+            model=LITELLM_MODEL,
+            api_key=LITELLM_API_KEY,
+            api_base=LITELLM_API_BASE,
+            temperature=0.1,  # consistent JSON generation
+        )
+        logger.info("LiteLLM created successfully")
+        return llm
+
+    error_msg = f"Unsupported LLM_CHOICE: {LLM_CHOICE}"
+    logger.error(error_msg)
+    raise ValueError(error_msg)
+
+
+# ------------------------------
+# MCP tools: cached, atomic init
+# ------------------------------
+_MCP_TOOLS: List[Any] | None = None
+_MCP_INIT_LOCK = asyncio.Lock()
+_MCP_INIT_ERROR: Exception | None = None
+
+
+async def get_mcp_tools_cached() -> List[Any]:
+    """
+    Ensure MCP tools are fetched once and reused.
+    If another request is already initializing, wait for it.
+    If init fails, raise so the caller sees a 503/500 instead of silently proceeding.
+    """
+    global _MCP_TOOLS, _MCP_INIT_ERROR
+
+    if _MCP_TOOLS is not None:
+        return _MCP_TOOLS
+
+    async with _MCP_INIT_LOCK:
+        if _MCP_TOOLS is not None:  # re-check after acquiring the lock
+            return _MCP_TOOLS
+
+        if not MCP_SERVER_URL:
+            raise RuntimeError("MCP_SERVER_URL is not configured")
+
+        logger.info(f"Attempting to fetch MCP tools from: {MCP_SERVER_URL}")
+        last_exc: Exception | None = None
+
+        # A couple of short retries help with cold MCP servers
+        for attempt in range(1, 4):
+            try:
+                client = BasicMCPClient(MCP_SERVER_URL)
+                tools = await aget_tools_from_mcp_url(
+                    MCP_SERVER_URL, client=client, allowed_tools=None
+                )
+
+                if not tools:
+                    raise RuntimeError("MCP returned zero tools")
+
+                # Log details about each tool (briefly)
+                tool_names = []
+                for i, tool in enumerate(tools):
+                    name = getattr(tool, "name", None)
+                    if not name and hasattr(tool, "metadata"):
+                        name = getattr(tool.metadata, "name", None)
+                    tool_names.append(name or f"tool_{i}")
+                logger.info(f"Cached {len(tools)} MCP tools: {tool_names}")
+
+                _MCP_TOOLS = tools
+                _MCP_INIT_ERROR = None
+                return _MCP_TOOLS
+
+            except Exception as e:
+                last_exc = e
+                logger.warning(f"MCP fetch attempt {attempt} failed: {type(e).__name__}: {e}")
+                await asyncio.sleep(0.5 * attempt)
+
+        _MCP_INIT_ERROR = last_exc or RuntimeError("Unknown MCP init error")
+        raise _MCP_INIT_ERROR
+
+
+# Optional warm-start: prebuild LLM and MCP tools so the first call never races
+@app.on_event("startup")
+async def _warm_start():
+    try:
+        build_llm()
+    except Exception as e:
+        logger.warning(f"LLM warm start skipped/failed: {e}")
+
+    try:
+        await get_mcp_tools_cached()
+        logger.info("MCP warm start completed")
+    except Exception as e:
+        logger.warning(f"MCP warm start skipped/failed: {e}")
+
+
+# -----------------------------
+# Health endpoints
+# -----------------------------
 @app.get("/")
 async def health():
     return {"status": "ok", "service": "fastapi-agent"}
@@ -81,9 +221,8 @@ async def health():
 
 @app.get("/health")
 async def detailed_health():
-    """Detailed health check endpoint"""
+    """Detailed health check endpoint."""
     try:
-        # Check if we can build LLM
         llm = build_llm()
         llm_status = "ok"
         llm_type = type(llm).__name__
@@ -91,15 +230,8 @@ async def detailed_health():
         llm_status = f"error: {str(e)}"
         llm_type = "unknown"
 
-    # Check MCP connection
-    try:
-        if MCP_SERVER_URL:
-            # Don't actually fetch tools in health check to avoid timeouts
-            mcp_status = "configured"
-        else:
-            mcp_status = "not_configured"
-    except Exception as e:
-        mcp_status = f"error: {str(e)}"
+    # We don't force fetching tools here (avoid long health checks)
+    mcp_status = "configured" if MCP_SERVER_URL else "not_configured"
 
     return {
         "status": "ok",
@@ -109,113 +241,11 @@ async def detailed_health():
     }
 
 
-def build_llm():
-    """
-    Build the selected LLM instance.
-    """
-    logger.info(f"Building LLM with choice: {LLM_CHOICE}")
-
-    if LLM_CHOICE.lower() == "ollama":
-        logger.info("Configuring Ollama LLM:")
-        logger.info(f"  Model: {OLLAMA_MODEL}")
-        logger.info(f"  Base URL: {OLLAMA_BASE_URL}")
-        logger.info(f"  Timeout: {OLLAMA_TIMEOUT}")
-
-        # Ollama with configurable base URL for Docker/remote access
-        llm = Ollama(
-            model=OLLAMA_MODEL,
-            base_url=OLLAMA_BASE_URL,
-            request_timeout=OLLAMA_TIMEOUT,
-            # Add additional options for better JSON handling
-            additional_kwargs={
-                "temperature": 0.1,  # Lower temperature for more consistent output
-                "top_p": 0.9,
-            },
-        )
-        logger.info("Ollama LLM created successfully")
-
-    elif LLM_CHOICE.lower() == "litellm":
-        logger.info("Configuring LiteLLM:")
-        logger.info(f"  Model: {LITELLM_MODEL}")
-        logger.info(f"  API Base: {LITELLM_API_BASE}")
-        logger.info(
-            f"  API Key: {'*' * (len(LITELLM_API_KEY) - 4) + LITELLM_API_KEY[-4:] if LITELLM_API_KEY else 'None'}"
-        )
-
-        # LiteLLM with Hyland ML platform support
-        llm = LiteLLM(
-            model=LITELLM_MODEL,
-            api_key=LITELLM_API_KEY,
-            api_base=LITELLM_API_BASE,
-            # Lower temperature for more consistent JSON generation
-            temperature=0.1,
-        )
-        logger.info("LiteLLM created successfully")
-
-    else:
-        error_msg = f"Unsupported LLM_CHOICE: {LLM_CHOICE}"
-        logger.error(error_msg)
-        raise ValueError(error_msg)
-
-    return llm
-
-
-async def fetch_mcp_tools() -> List[Any]:
-    """
-    Fetch MCP tools from the MCP server and convert to LlamaIndex tools.
-    """
-    if MCP_SERVER_URL is None:
-        logger.warning("MCP_SERVER_URL is None, returning empty tools list")
-        return []
-
-    logger.info(f"Attempting to fetch MCP tools from: {MCP_SERVER_URL}")
-
-    try:
-        # Create client
-        client = BasicMCPClient(MCP_SERVER_URL)
-        logger.info(f"Created MCP client: {type(client).__name__}")
-
-        # Fetch tools
-        tools = await aget_tools_from_mcp_url(
-            MCP_SERVER_URL,
-            client=client,
-            allowed_tools=None,
-        )
-
-        logger.info(f"Successfully fetched {len(tools)} tools from MCP server")
-
-        # Log details about each tool
-        for i, tool in enumerate(tools):
-            tool_info = {
-                "index": i,
-                "type": type(tool).__name__,
-                "name": getattr(tool, "name", "unknown"),
-                "description": getattr(tool, "description", "no description")[:100],
-            }
-            if hasattr(tool, "metadata"):
-                tool_info.update(
-                    {
-                        "metadata_name": getattr(tool.metadata, "name", "unknown"),
-                        "metadata_description": getattr(
-                            tool.metadata, "description", "no description"
-                        )[:100],
-                    }
-                )
-            logger.info(f"Tool {i}: {tool_info}")
-
-        return tools
-
-    except Exception as e:
-        logger.error(f"Error fetching MCP tools from {MCP_SERVER_URL}")
-        logger.error(f"Error type: {type(e).__name__}")
-        logger.error(f"Error message: {str(e)}")
-        logger.exception("MCP fetch error traceback:")
-        return []
-
-
+# -----------------------------
+# Agent endpoint
+# -----------------------------
 @app.post("/agent", response_model=AgentResponse)
 async def run_agent(req: AgentRequest):
-    # Log the incoming request
     logger.info("=" * 50)
     logger.info("NEW AGENT REQUEST")
     logger.info("=" * 50)
@@ -229,23 +259,14 @@ async def run_agent(req: AgentRequest):
         llm = build_llm()
         logger.info(f"LLM built successfully: {type(llm).__name__}")
         if hasattr(llm, "model"):
-            logger.info(f"Model: {llm.model}")
+            logger.info(f"Model: {getattr(llm, 'model', '')}")
 
-        # Fetch tools from MCP server
-        logger.info("Fetching MCP tools...")
-        mcp_tools = await fetch_mcp_tools()
-        logger.info(f"MCP tools fetched: {len(mcp_tools)} tools available")
+        # Fetch (cached) tools from MCP server; raise on failure
+        logger.info("Fetching MCP tools (cached)...")
+        mcp_tools = await get_mcp_tools_cached()
+        logger.info(f"MCP tools available: {len(mcp_tools)}")
 
-        # Log tool names for debugging
-        tool_names = []
-        for tool in mcp_tools:
-            if hasattr(tool, "metadata") and hasattr(tool.metadata, "name"):
-                tool_names.append(tool.metadata.name)
-            elif hasattr(tool, "name"):
-                tool_names.append(tool.name)
-        logger.info(f"Available tools: {tool_names}")
-
-        # Build the agent with more conservative settings
+        # Build the agent workflow
         logger.info("Building agent workflow...")
         agent = AgentWorkflow.from_tools_or_functions(
             mcp_tools,
@@ -255,32 +276,24 @@ async def run_agent(req: AgentRequest):
         )
         logger.info("Agent workflow built successfully")
 
-        # Add specific instruction to be careful with JSON formatting
-        enhanced_prompt = f"""
-        {req.prompt}
-        
-        IMPORTANT: When calling tools, ensure all JSON parameters are properly formatted. 
-        Avoid long text descriptions that might contain special characters.
-        Keep tool parameters concise and well-formatted.
-        """
-
+        # Nudge the model to keep tool JSON clean
+        enhanced_prompt = (
+            f"{req.prompt}\n"
+            "IMPORTANT: When calling tools, ensure all JSON parameters are properly formatted. "
+            "Avoid long free-form text inside parameters; keep values concise and valid JSON."
+        )
         logger.info(f"Enhanced prompt: {enhanced_prompt}")
+
         logger.info("Starting agent execution...")
-
         result = await agent.run(enhanced_prompt)
-
         logger.info("Agent execution completed")
-        logger.info(f"Result type: {type(result)}")
-        logger.info(f"Result attributes: {dir(result)}")
 
         # Extract text from AgentOutput -> ChatMessage -> TextBlock
         text = "No output generated"
-
         if hasattr(result, "response") and hasattr(result.response, "blocks"):
             logger.info(f"Found response with {len(result.response.blocks)} blocks")
             for i, block in enumerate(result.response.blocks):
-                logger.info(f"Block {i}: type={type(block)}, attributes={dir(block)}")
-                if hasattr(block, "text"):
+                if hasattr(block, "text") and block.text:
                     text = block.text
                     logger.info(
                         f"Extracted text from block {i}: {text[:200]}{'...' if len(text) > 200 else ''}"
@@ -288,11 +301,9 @@ async def run_agent(req: AgentRequest):
                     break
         else:
             logger.warning("No response blocks found, using fallback")
-            if hasattr(result, "response"):
-                logger.info(f"Response type: {type(result.response)}")
-                logger.info(f"Response content: {str(result.response)[:500]}")
 
         response_data = {"output": text, "debug": {"repr": repr(result)}}
+
         logger.info("=" * 50)
         logger.info("AGENT RESPONSE SUCCESS")
         logger.info("=" * 50)
@@ -306,18 +317,20 @@ async def run_agent(req: AgentRequest):
         logger.error("AGENT REQUEST FAILED")
         logger.error("=" * 50)
         logger.error(f"Error type: {type(e).__name__}")
-        logger.error(f"Error message: {str(e)}")
-        logger.exception("Full traceback:")
+        logger.error(f"Error message: {str(e)}", exc_info=True)
 
-        # Check if it's a JSON parsing error from Ollama
+        # Friendly message for common tool-call JSON issues
         if "error parsing tool call" in str(e):
-            error_response = {
-                "output": "I encountered an issue with tool formatting. Please try a simpler request or rephrase your question.",
+            return {
+                "output": (
+                    "I encountered an issue with tool formatting. "
+                    "Please try a simpler request or rephrase your question."
+                ),
                 "debug": {"error": str(e)},
             }
-            logger.info("Returning user-friendly error for JSON parsing issue")
-            logger.info(f"Error response: {error_response}")
-            return error_response
 
-        logger.error("Raising HTTP exception for unhandled error")
+        # If MCP cache failed to initialize, surface a 503 so callers understand it's transient
+        if isinstance(e, RuntimeError) and ("MCP" in str(e) or "tools" in str(e)):
+            raise HTTPException(status_code=503, detail=f"service warming up: {e}")
+
         raise HTTPException(status_code=500, detail=f"agent error: {e}")
